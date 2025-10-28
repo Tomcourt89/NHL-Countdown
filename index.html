@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHL Countdown Timer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>NHL Game Countdown</h1>
+        <button class="team-menu-toggle" aria-label="Toggle team selection menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+    </header>
+
+    <div class="team-menu" aria-hidden="true">
+        <div class="team-menu-content">
+            <h2>Add Team</h2>
+            <div class="team-grid" id="teamGrid"></div>
+        </div>
+    </div>
+
+    <main>
+        <div class="countdown-container" id="countdownContainer">
+            <div class="countdown-card" data-team="NJD"></div>
+            <div class="countdown-card" data-team="PIT"></div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
