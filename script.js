@@ -36,24 +36,49 @@ const NHL_TEAMS = {
 const DEFAULT_TEAMS = ['NJD', 'PIT'];
 const activeTeams = new Set(DEFAULT_TEAMS);
 const countdownIntervals = new Map();
+let menuCreated = false;
 
 const elements = {
     countdownContainer: document.getElementById('countdownContainer'),
-    teamGrid: document.getElementById('teamGrid'),
-    teamMenu: document.querySelector('.team-menu'),
     menuToggle: document.querySelector('.team-menu-toggle')
 };
 
 function initApp() {
-    populateTeamMenu();
     setupEventListeners();
     DEFAULT_TEAMS.forEach(teamCode => loadTeamData(teamCode));
     updateDynamicStyles();
 }
 
+function createTeamMenu() {
+    if (menuCreated) return;
+    
+    const menuHtml = `
+        <div class="team-menu" aria-hidden="true">
+            <div class="team-menu-content">
+                <h2>Add Team</h2>
+                <div class="team-grid" id="teamGrid"></div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', menuHtml);
+    
+    elements.teamMenu = document.querySelector('.team-menu');
+    elements.teamGrid = document.getElementById('teamGrid');
+    
+    elements.teamMenu.addEventListener('click', (e) => {
+        if (e.target === elements.teamMenu) toggleTeamMenu();
+    });
+    elements.teamGrid.addEventListener('click', handleTeamSelection);
+    
+    menuCreated = true;
+}
+
 function populateTeamMenu() {
+    if (!elements.teamGrid) return;
+    
     elements.teamGrid.innerHTML = Object.entries(NHL_TEAMS)
-        .filter(([code]) => !DEFAULT_TEAMS.includes(code))
+        .filter(([code]) => !activeTeams.has(code))
         .map(([code, team]) => `
             <div class="team-item" data-team="${code}">
                 <img src="https://assets.nhle.com/logos/nhl/svg/${code}_light.svg" alt="${team.name}" loading="lazy">
@@ -64,14 +89,19 @@ function populateTeamMenu() {
 
 function setupEventListeners() {
     elements.menuToggle.addEventListener('click', toggleTeamMenu);
-    elements.teamMenu.addEventListener('click', (e) => {
-        if (e.target === elements.teamMenu) toggleTeamMenu();
-    });
-    elements.teamGrid.addEventListener('click', handleTeamSelection);
 }
 
 function toggleTeamMenu() {
+    if (!menuCreated) {
+        createTeamMenu();
+    }
+    
     const isHidden = elements.teamMenu.getAttribute('aria-hidden') === 'true';
+    
+    if (isHidden) {
+        populateTeamMenu();
+    }
+    
     elements.teamMenu.setAttribute('aria-hidden', !isHidden);
 }
 
@@ -83,7 +113,6 @@ function handleTeamSelection(e) {
     if (activeTeams.has(teamCode)) return;
 
     activeTeams.add(teamCode);
-    teamItem.classList.add('hidden');
     addCountdownCard(teamCode);
     loadTeamData(teamCode);
     toggleTeamMenu();
@@ -103,12 +132,14 @@ function removeTeamCard(teamCode) {
     const card = document.querySelector(`.countdown-card[data-team="${teamCode}"]`);
     if (card) card.remove();
 
-    const teamItem = document.querySelector(`.team-item[data-team="${teamCode}"]`);
-    if (teamItem) teamItem.classList.remove('hidden');
-
     if (countdownIntervals.has(teamCode)) {
         clearInterval(countdownIntervals.get(teamCode));
         countdownIntervals.delete(teamCode);
+    }
+    
+    if (countdownIntervals.has(teamCode + '_live')) {
+        clearInterval(countdownIntervals.get(teamCode + '_live'));
+        countdownIntervals.delete(teamCode + '_live');
     }
 }
 
@@ -125,13 +156,20 @@ async function loadTeamData(teamCode) {
         const data = await response.json();
         const games = findUpcomingGames(data.games);
 
-        if (!games.nextGame) {
+        if (!games.nextGame && !games.liveGame) {
             card.innerHTML = '<div class="error">No upcoming games found</div>';
             return;
         }
 
-        renderCountdownCard(card, teamCode, games.nextGame, games.followingGame);
-        startCountdown(teamCode, games.nextGame);
+        renderCountdownCard(card, teamCode, games.nextGame, games.followingGame, games.liveGame);
+        
+        if (games.liveGame) {
+            startLiveGameRefresh(teamCode);
+        }
+        
+        if (games.nextGame) {
+            startCountdown(teamCode, games.nextGame);
+        }
     } catch (error) {
         card.innerHTML = `<div class="error">Failed to load game data</div>`;
     }
@@ -139,18 +177,34 @@ async function loadTeamData(teamCode) {
 
 function findUpcomingGames(games) {
     const now = new Date();
-    const upcomingGames = games.filter(game => new Date(game.startTimeUTC) > now);
+    
+    const liveGame = games.find(game => 
+        game.gameState === 'LIVE' || 
+        game.gameState === 'CRIT' || 
+        game.gameState === 'PRE'
+    );
+    
+    const upcomingGames = games.filter(game => 
+        new Date(game.startTimeUTC) > now && 
+        (!liveGame || game.id !== liveGame.id)
+    );
+    
     return {
+        liveGame: liveGame || null,
         nextGame: upcomingGames[0] || null,
         followingGame: upcomingGames[1] || null
     };
 }
 
-function renderCountdownCard(card, teamCode, game, followingGame) {
+function renderCountdownCard(card, teamCode, game, followingGame, liveGame = null) {
     const team = NHL_TEAMS[teamCode];
-    const isHomeGame = game.homeTeam.abbrev === teamCode;
-    const opponent = isHomeGame ? game.awayTeam : game.homeTeam;
-    const gameDate = new Date(game.startTimeUTC);
+    
+    if (!game && !liveGame) return;
+    
+    const displayGame = game || liveGame;
+    const isHomeGame = displayGame.homeTeam.abbrev === teamCode;
+    const opponent = isHomeGame ? displayGame.awayTeam : displayGame.homeTeam;
+    const gameDate = new Date(displayGame.startTimeUTC);
     const location = isHomeGame ? 'Home' : `@ ${opponent.placeName.default}`;
 
     const removeButton = !DEFAULT_TEAMS.includes(teamCode) 
@@ -172,17 +226,49 @@ function renderCountdownCard(card, teamCode, game, followingGame) {
         `;
     }
 
+    const liveScoreHtml = liveGame ? `
+        <div class="live-score-container">
+            <div class="score-spoiler" onclick="toggleScore('${teamCode}')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+            </div>
+            <div class="score-reveal" data-revealed="false" data-team-score="${teamCode}">
+                <div class="score-display">
+                    <div class="team-score">
+                        <span class="score-team">${liveGame.homeTeam.abbrev}</span>
+                        <span class="score-value">${liveGame.homeTeam.score || 0}</span>
+                    </div>
+                    <div class="score-divider">-</div>
+                    <div class="team-score">
+                        <span class="score-team">${liveGame.awayTeam.abbrev}</span>
+                        <span class="score-value">${liveGame.awayTeam.score || 0}</span>
+                    </div>
+                </div>
+                <div class="game-period">${formatPeriod(liveGame)}</div>
+            </div>
+        </div>
+    ` : '';
+
     card.innerHTML = `
         ${removeButton}
         <div class="team-header">
-            <img class="team-logo" src="https://assets.nhle.com/logos/nhl/svg/${teamCode}_light.svg" alt="${team.name}">
-            <div class="team-info">
-                <h2>${team.name}</h2>
-                <div class="next-game">Next Game</div>
+            <div class="team-identity">
+                <img class="team-logo" src="https://assets.nhle.com/logos/nhl/svg/${teamCode}_light.svg" alt="${team.name}">
+                <div class="team-info">
+                    <h2>${team.name}</h2>
+                </div>
             </div>
+            ${liveScoreHtml}
         </div>
+        ${liveGame ? `<div class="live-game-banner">
+            <span class="live-indicator">🔴 LIVE</span>
+            <span class="live-matchup">${liveGame.homeTeam.abbrev} vs ${liveGame.awayTeam.abbrev}</span>
+        </div>` : ''}
         <div class="game-details">
-            <div class="matchup">${game.homeTeam.abbrev} vs ${game.awayTeam.abbrev}</div>
+            <div class="matchup">${displayGame.homeTeam.abbrev} vs ${displayGame.awayTeam.abbrev}</div>
             <div class="game-date">${formatGameDate(gameDate)}</div>
             <div class="game-location">${location}</div>
         </div>
@@ -230,6 +316,38 @@ function formatShortDate(date) {
     return date.toLocaleDateString('en-GB', options);
 }
 
+function formatPeriod(game) {
+    if (!game.periodDescriptor || !game.periodDescriptor.number) return 'Live';
+    const period = game.periodDescriptor.number;
+    const periodType = game.periodDescriptor.periodType;
+    
+    if (periodType === 'OT') return 'Overtime';
+    if (periodType === 'SO') return 'Shootout';
+    if (period === 1) return '1st Period';
+    if (period === 2) return '2nd Period';
+    if (period === 3) return '3rd Period';
+    return `Period ${period}`;
+}
+
+function toggleScore(teamCode) {
+    const card = document.querySelector(`.countdown-card[data-team="${teamCode}"]`);
+    if (!card) return;
+    
+    const scoreReveal = card.querySelector('.score-reveal');
+    const scoreSpoiler = card.querySelector('.score-spoiler');
+    
+    if (!scoreReveal || !scoreSpoiler) return;
+    
+    const isRevealed = scoreReveal.getAttribute('data-revealed') === 'true';
+    scoreReveal.setAttribute('data-revealed', !isRevealed);
+    
+    if (!isRevealed) {
+        scoreSpoiler.style.display = 'none';
+    } else {
+        scoreSpoiler.style.display = 'flex';
+    }
+}
+
 function startCountdown(teamCode, game) {
     if (countdownIntervals.has(teamCode)) {
         clearInterval(countdownIntervals.get(teamCode));
@@ -268,6 +386,57 @@ function startCountdown(teamCode, game) {
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     countdownIntervals.set(teamCode, interval);
+}
+
+function startLiveGameRefresh(teamCode) {
+    if (countdownIntervals.has(teamCode + '_live')) {
+        clearInterval(countdownIntervals.get(teamCode + '_live'));
+    }
+
+    const interval = setInterval(async () => {
+        try {
+            const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now`);
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const games = findUpcomingGames(data.games);
+            
+            if (games.liveGame) {
+                updateLiveScore(teamCode, games.liveGame);
+            } else {
+                clearInterval(countdownIntervals.get(teamCode + '_live'));
+                countdownIntervals.delete(teamCode + '_live');
+                loadTeamData(teamCode);
+            }
+        } catch (error) {
+            console.error('Failed to refresh live score:', error);
+        }
+    }, 15000);
+    
+    countdownIntervals.set(teamCode + '_live', interval);
+}
+
+function updateLiveScore(teamCode, liveGame) {
+    const card = document.querySelector(`.countdown-card[data-team="${teamCode}"]`);
+    if (!card) return;
+    
+    const scoreReveal = card.querySelector(`.score-reveal[data-team-score="${teamCode}"]`);
+    if (!scoreReveal) return;
+    
+    const wasRevealed = scoreReveal.getAttribute('data-revealed') === 'true';
+    
+    const scoreValues = scoreReveal.querySelectorAll('.score-value');
+    const scoreTeams = scoreReveal.querySelectorAll('.score-team');
+    
+    if (scoreTeams[0] && scoreTeams[0].textContent === liveGame.homeTeam.abbrev) {
+        if (scoreValues[0]) scoreValues[0].textContent = liveGame.homeTeam.score || 0;
+        if (scoreValues[1]) scoreValues[1].textContent = liveGame.awayTeam.score || 0;
+    }
+    
+    const periodEl = scoreReveal.querySelector('.game-period');
+    if (periodEl) periodEl.textContent = formatPeriod(liveGame);
+    
+    scoreReveal.setAttribute('data-revealed', wasRevealed);
 }
 
 function updateDynamicStyles() {

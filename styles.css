@@ -116,10 +116,6 @@ header {
                 transform: translateY(-2px);
             }
 
-            &.hidden {
-                display: none;
-            }
-
             img {
                 width: 50px;
                 height: 50px;
@@ -189,11 +185,17 @@ main {
 
     .team-header {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 1rem;
         padding: 1rem;
         border-radius: 0.375rem;
         margin-bottom: 1.5rem;
+
+        .team-identity {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
 
         .team-logo {
             width: 60px;
@@ -201,12 +203,18 @@ main {
             object-fit: contain;
         }
 
-        .team-info {
+            .team-info {
             flex: 1;
 
             h2 {
                 font-size: 1.5rem;
                 margin-bottom: 0.25rem;
+            }
+
+            .game-status-container {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
             }
 
             .next-game {
@@ -216,7 +224,94 @@ main {
         }
     }
 
-    .game-details {
+    .live-score-container {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .score-spoiler {
+        cursor: pointer;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 0.25rem;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    .score-reveal {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.375rem;
+        padding: 0.75rem 1rem;
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.9);
+        transition: all 0.3s;
+        width: 100%;
+        display: none;
+
+        &[data-revealed="true"] {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+            display: block;
+        }
+
+        .score-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.25rem;
+
+            .team-score {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.125rem;
+
+                .score-team {
+                    font-size: 0.625rem;
+                    font-weight: 600;
+                    color: rgba(255, 255, 255, 0.7);
+                }
+
+                .score-value {
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: var(--text-primary);
+                }
+            }
+
+            .score-divider {
+                font-size: 1.25rem;
+                color: rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        .game-period {
+            text-align: center;
+            font-size: 0.625rem;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    }    .game-details {
         margin-bottom: 1.5rem;
 
         .matchup {
@@ -234,6 +329,30 @@ main {
             color: var(--text-secondary);
             font-size: 0.875rem;
             margin-top: 0.25rem;
+        }
+    }
+
+    .live-game-banner {
+        background: rgba(220, 20, 60, 0.15);
+        border: 1px solid rgba(220, 20, 60, 0.5);
+        border-radius: 0.375rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        animation: bannerPulse 2s ease-in-out infinite;
+
+        .live-indicator {
+            color: #ff4444;
+            font-weight: 700;
+            animation: pulse 2s infinite;
+        }
+
+        .live-matchup {
+            color: var(--text-primary);
+            font-weight: 600;
         }
     }
 
@@ -348,6 +467,13 @@ main {
         padding: 2rem;
 
         .team-header {
+            flex-direction: row;
+            align-items: center;
+
+            .team-identity {
+                flex: 1;
+            }
+
             .team-logo {
                 width: 80px;
                 height: 80px;
@@ -357,11 +483,19 @@ main {
                 h2 {
                     font-size: 1.75rem;
                 }
-
-                .next-game {
-                    font-size: 1rem;
-                }
             }
+        }
+
+        .live-score-container {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.75rem;
+            width: auto;
+        }
+
+        .score-reveal {
+            min-width: 180px;
+            width: auto;
         }
 
         .game-details {
@@ -429,5 +563,25 @@ main {
                 }
             }
         }
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes bannerPulse {
+    0%, 100% {
+        background: rgba(220, 20, 60, 0.15);
+        border-color: rgba(220, 20, 60, 0.5);
+    }
+    50% {
+        background: rgba(220, 20, 60, 0.35);
+        border-color: rgba(220, 20, 60, 0.9);
     }
 }
