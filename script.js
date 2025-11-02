@@ -270,7 +270,6 @@ function renderCountdownCard(card, teamCode, game, followingGame, liveGame = nul
         <div class="vs-divider">VS</div>
         <div class="game-banner" data-opponent="${opponent.abbrev}">
             <div class="game-details game-details-desktop">
-                <div class="matchup">${displayGame.homeTeam.abbrev} vs ${displayGame.awayTeam.abbrev}</div>
                 <div class="game-date">${formatGameDate(gameDate)}</div>
                 <div class="game-location">${location}</div>
             </div>
@@ -282,7 +281,6 @@ function renderCountdownCard(card, teamCode, game, followingGame, liveGame = nul
             </div>
         </div>
         <div class="game-details-mobile" data-opponent="${opponent.abbrev}">
-            <div class="matchup">${displayGame.homeTeam.abbrev} vs ${displayGame.awayTeam.abbrev}</div>
             <div class="game-date">${formatGameDate(gameDate)}</div>
             <div class="game-location">${location}</div>
         </div>
@@ -484,14 +482,10 @@ function updateDynamicStyles() {
             }
         }
         ${isDarkTextNeeded ? `
-        .game-banner[data-opponent="${code}"] .game-details-desktop .matchup,
         .game-banner[data-opponent="${code}"] .game-details-desktop .game-date,
         .game-banner[data-opponent="${code}"] .game-details-desktop .game-location {
             color: #000 !important;
         }` : ''}
-        .game-details-mobile[data-opponent="${code}"] .matchup {
-            color: var(--text-primary);
-        }
         .game-details-mobile[data-opponent="${code}"] .game-date,
         .game-details-mobile[data-opponent="${code}"] .game-location {
             color: var(--text-secondary);

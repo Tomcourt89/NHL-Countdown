@@ -355,21 +355,13 @@ main {
         }
     }
 
-    .game-details-mobile {
+        .game-details-mobile {
         margin-bottom: 1.5rem;
-
-        .matchup {
-            font-size: 1.125rem;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
 
         .game-date {
             color: var(--text-secondary);
             font-size: 0.875rem;
-        }
-
-        .game-location {
+        }        .game-location {
             color: var(--text-secondary);
             font-size: 0.875rem;
             margin-top: 0.25rem;
@@ -551,12 +543,6 @@ main {
             .game-details-desktop {
                 display: block;
                 flex: 1;
-
-                .matchup {
-                    font-size: 1.5rem;
-                    margin-bottom: 0.5rem;
-                    font-weight: 600;
-                }
 
                 .game-date {
                     color: var(--text-primary);
