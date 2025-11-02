@@ -267,7 +267,21 @@ function renderCountdownCard(card, teamCode, game, followingGame, liveGame = nul
             <span class="live-indicator">🔴 LIVE</span>
             <span class="live-matchup">${liveGame.homeTeam.abbrev} vs ${liveGame.awayTeam.abbrev}</span>
         </div>` : ''}
-        <div class="game-details">
+        <div class="vs-divider">VS</div>
+        <div class="game-banner" data-opponent="${opponent.abbrev}">
+            <div class="game-details game-details-desktop">
+                <div class="matchup">${displayGame.homeTeam.abbrev} vs ${displayGame.awayTeam.abbrev}</div>
+                <div class="game-date">${formatGameDate(gameDate)}</div>
+                <div class="game-location">${location}</div>
+            </div>
+            <div class="team-identity">
+                <div class="team-info">
+                    <h2>${NHL_TEAMS[opponent.abbrev].name}</h2>
+                </div>
+                <img class="team-logo" src="https://assets.nhle.com/logos/nhl/svg/${opponent.abbrev}_light.svg" alt="${NHL_TEAMS[opponent.abbrev].name}">
+            </div>
+        </div>
+        <div class="game-details-mobile" data-opponent="${opponent.abbrev}">
             <div class="matchup">${displayGame.homeTeam.abbrev} vs ${displayGame.awayTeam.abbrev}</div>
             <div class="game-date">${formatGameDate(gameDate)}</div>
             <div class="game-location">${location}</div>
@@ -441,14 +455,49 @@ function updateLiveScore(teamCode, liveGame) {
 
 function updateDynamicStyles() {
     const style = document.createElement('style');
-    const teamStyles = Object.entries(NHL_TEAMS).map(([code, team]) => `
+    
+    // Teams with light secondary colors that need dark text
+    const lightSecondaryTeams = ['BUF', 'CGY', 'DAL', 'DET', 'LAK', 'NYI', 'SEA', 'STL', 'TBL', 'TOR'];
+    
+    const teamStyles = Object.entries(NHL_TEAMS).map(([code, team]) => {
+        const isDarkTextNeeded = lightSecondaryTeams.includes(code);
+        
+        return `
         .countdown-card[data-team="${code}"] {
             border-color: ${team.primaryColor};
         }
         .countdown-card[data-team="${code}"] .team-header {
             background: linear-gradient(135deg, ${team.primaryColor}, ${team.secondaryColor});
         }
-    `).join('');
+        .countdown-card[data-team="${code}"] .game-banner[data-opponent="${code}"] {
+            background: linear-gradient(135deg, ${team.primaryColor}, ${team.secondaryColor});
+        }
+        .game-banner[data-opponent="${code}"] {
+            background: linear-gradient(135deg, ${team.primaryColor}, ${team.secondaryColor});
+        }
+        @media (min-width: 40em) {
+            .countdown-card[data-team="${code}"] .game-banner[data-opponent="${code}"] {
+                background: linear-gradient(90deg, ${team.secondaryColor}, ${team.primaryColor});
+            }
+            .game-banner[data-opponent="${code}"] {
+                background: linear-gradient(90deg, ${team.secondaryColor}, ${team.primaryColor});
+            }
+        }
+        ${isDarkTextNeeded ? `
+        .game-banner[data-opponent="${code}"] .game-details-desktop .matchup,
+        .game-banner[data-opponent="${code}"] .game-details-desktop .game-date,
+        .game-banner[data-opponent="${code}"] .game-details-desktop .game-location {
+            color: #000 !important;
+        }` : ''}
+        .game-details-mobile[data-opponent="${code}"] .matchup {
+            color: var(--text-primary);
+        }
+        .game-details-mobile[data-opponent="${code}"] .game-date,
+        .game-details-mobile[data-opponent="${code}"] .game-location {
+            color: var(--text-secondary);
+        }
+        `;
+    }).join('');
     
     style.textContent = teamStyles;
     document.head.appendChild(style);
