@@ -150,7 +150,7 @@ async function loadTeamData(teamCode) {
     card.innerHTML = '<div class="loading">Loading...</div>';
 
     try {
-        const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now`);
+        const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now?_t=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('Failed to fetch schedule');
 
         const data = await response.json();
@@ -407,7 +407,7 @@ function startLiveGameRefresh(teamCode) {
 
     const interval = setInterval(async () => {
         try {
-            const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now`);
+            const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now?_t=${Date.now()}`, { cache: 'no-store' });
             if (!response.ok) return;
 
             const data = await response.json();
