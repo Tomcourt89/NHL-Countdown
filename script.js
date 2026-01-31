@@ -33,6 +33,21 @@ const NHL_TEAMS = {
     WSH: { name: 'Washington Capitals', primaryColor: '#041e42', secondaryColor: '#c8102e' }
 };
 
+// Simple fetch with retry for occasional 403 errors
+async function fetchWithRetry(url, retries = 2) {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            const response = await fetch(`https://corsproxy.io/?${url}`, { cache: 'no-store' });
+            if (response.ok) return response;
+            if (i < retries) await new Promise(r => setTimeout(r, 500)); // Brief wait before retry
+        } catch (error) {
+            if (i === retries) throw error;
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+    throw new Error('Failed to fetch');
+}
+
 const DEFAULT_TEAMS = ['NJD', 'PIT'];
 const activeTeams = new Set(DEFAULT_TEAMS);
 const countdownIntervals = new Map();
@@ -150,7 +165,7 @@ async function loadTeamData(teamCode) {
     card.innerHTML = '<div class="loading">Loading...</div>';
 
     try {
-        const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now?_t=${Date.now()}`, { cache: 'no-store' });
+        const response = await fetchWithRetry(`https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now?_t=${Date.now()}`);
         if (!response.ok) throw new Error('Failed to fetch schedule');
 
         const data = await response.json();
@@ -407,7 +422,7 @@ function startLiveGameRefresh(teamCode) {
 
     const interval = setInterval(async () => {
         try {
-            const response = await fetch(`https://corsproxy.io/?https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now?_t=${Date.now()}`, { cache: 'no-store' });
+            const response = await fetchWithRetry(`https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now?_t=${Date.now()}`);
             if (!response.ok) return;
 
             const data = await response.json();
