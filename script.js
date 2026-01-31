@@ -1,3 +1,5 @@
+const PROXY_URL = 'https://sparkling-salad-7b65.t1989court.workers.dev';
+
 const NHL_TEAMS = {
     ANA: { name: 'Anaheim Ducks', primaryColor: '#f47a38', secondaryColor: '#000' },
     BOS: { name: 'Boston Bruins', primaryColor: '#ffb81c', secondaryColor: '#000' },
@@ -33,15 +35,18 @@ const NHL_TEAMS = {
     WSH: { name: 'Washington Capitals', primaryColor: '#041e42', secondaryColor: '#c8102e' }
 };
 
-// Simple fetch with retry for occasional 403 errors
+// Cloudflare Worker fetch with retry
 async function fetchWithRetry(url, retries = 2) {
     for (let i = 0; i <= retries; i++) {
         try {
-            const response = await fetch(`https://corsproxy.io/?${url}`, { cache: 'no-store' });
+            const response = await fetch(
+                `${PROXY_URL}?url=${encodeURIComponent(url)}`,
+                { cache: 'no-store' }
+            );
             if (response.ok) return response;
-            if (i < retries) await new Promise(r => setTimeout(r, 500)); // Brief wait before retry
-        } catch (error) {
-            if (i === retries) throw error;
+            if (i < retries) await new Promise(r => setTimeout(r, 500));
+        } catch (err) {
+            if (i === retries) throw err;
             await new Promise(r => setTimeout(r, 500));
         }
     }
